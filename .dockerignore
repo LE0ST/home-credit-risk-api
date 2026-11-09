@@ -1,0 +1,26 @@
+# Never include the competition data or local development state.
+data/
+.git/
+.venv/
+__pycache__/
+*.py[cod]
+*.ipynb
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Development-only material
+notebook.ipynb
+train.py
+test_predict.py
+tests/
+reports/
+examples/
+README.md
+.env
+.env.*
+*.log
+*.tmp
+
+# Keep only the approved model artifact if local scratch files exist.
+models/*
+!models/xgb_home_credit.joblib

@@ -1,0 +1,16 @@
+# Competition data must never be committed.
+data/
+
+# Only the reviewed production model is versionable.
+models/*
+!models/xgb_home_credit.joblib
+reports/
+
+# Python environments, caches, and credentials
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.env
+.env.*
