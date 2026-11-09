@@ -14,6 +14,7 @@ uv run python experiments/feature_engineering.py --cv-folds 3
 uv run python experiments/cross_validate_xgb.py
 uv run python experiments/feature_ablation.py
 uv run python experiments/feature_isolation.py
+uv run python -m experiments.cv_confirmation
 ```
 
 LightGBM 4.7.0 is pinned in the `dev` dependency group; the Dockerfile installs
@@ -41,6 +42,9 @@ its own limits. The preprocessing pipeline imputes remaining missing values.
   one-at-a-time feature ablations against the full feature set.
 - `feature_isolation.json`: test of `CREDIT_ANNUITY_RATIO` as the only engineered
   input feature.
+- `cv_confirmation_results.json`: four-candidate confirmation on one shared set
+  of three stratified training folds, with paired fold differences and a local
+  FastAPI/joblib compatibility smoke check.
 
 Validation metrics guide the experiment and are not an independent final
 evaluation. The `CODE_GENDER` variant is a predictive sensitivity check, not a

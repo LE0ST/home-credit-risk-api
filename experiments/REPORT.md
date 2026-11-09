@@ -94,3 +94,62 @@ by chance. The test set was not evaluated, no new threshold was selected, and no
 private GCI World data was used for training. Docker and the API were not changed
 or rerun; their tests and documentation remain in the baseline commit. LightGBM
 was added only to the local development dependency group.
+
+## Controlled four-candidate CV confirmation
+
+All four candidates were evaluated on the same three folds from the established
+184,506-row training partition. Fold indices were generated once with
+`StratifiedKFold(n_splits=3, shuffle=True, random_state=42)` and reused for each
+candidate. Preprocessing and ratio clipping were fitted inside each fold. The
+held-out validation and test feature rows were not parsed for this comparison.
+The target column was read to reconstruct the established stratified split; held-out labels and features were not used for fitting or metric computation.
+
+| Candidate | ROC-AUC, mean ± SD | Average Precision, mean ± SD | Total fit + predict | Peak RSS |
+|---|---:|---:|---:|---:|
+| Tuned LightGBM, complete features | **0.762720 ± 0.001538** | **0.245235 ± 0.005388** | 50.72 s | 1,313 MiB |
+| Initial LightGBM, complete features | 0.760665 ± 0.001728 | 0.242435 ± 0.005484 | 38.93 s | 1,269 MiB |
+| Tuned XGBoost, complete features | 0.757857 ± 0.001854 | 0.240012 ± 0.006688 | 21.87 s | 1,428 MiB |
+| XGBoost, `CREDIT_ANNUITY_RATIO` only | 0.756807 ± 0.003201 | 0.238098 ± 0.007919 | 18.48 s | 1,384 MiB |
+
+Per-fold ROC-AUC / Average Precision:
+
+| Fold | Tuned LightGBM | Initial LightGBM | Tuned XGBoost | Ratio-only XGBoost |
+|---:|---:|---:|---:|---:|
+| 1 | 0.763761 / 0.241709 | 0.760233 / 0.238412 | 0.757277 / 0.235318 | 0.756404 / 0.232681 |
+| 2 | 0.763446 / 0.251438 | 0.762568 / 0.248681 | 0.759931 / 0.247670 | 0.760191 / 0.247187 |
+| 3 | 0.760953 / 0.242560 | 0.759195 / 0.240211 | 0.756361 / 0.237049 | 0.753826 / 0.234428 |
+
+Paired differences against tuned LightGBM on each identical fold (candidate minus
+tuned LightGBM; ROC-AUC delta / AP delta):
+
+| Candidate | Fold 1 | Fold 2 | Fold 3 |
+|---|---:|---:|---:|
+| Initial LightGBM | −0.003528 / −0.003297 | −0.000877 / −0.002756 | −0.001758 / −0.002349 |
+| Tuned XGBoost | −0.006483 / −0.006390 | −0.003514 / −0.003768 | −0.004591 / −0.005511 |
+| Ratio-only XGBoost | −0.007356 / −0.009028 | −0.003255 / −0.004251 | −0.007127 / −0.008132 |
+
+Tuned LightGBM led both mean metrics and scored higher on both metrics in every
+fold. This is consistent evidence across these three folds, not a broad statistical
+guarantee. The single-ratio XGBoost result is lower in CV than its earlier fixed
+validation result, which shows why that single split was not enough to select it.
+
+## Feature and inference compatibility checks
+
+Synthetic checks covered zero and missing denominators, positive and negative
+infinity inputs, the employment sentinel, all-missing EXT_SOURCE values, stable
+feature order, and repeat-transform equality. Both feature transformers are
+scikit-learn estimators with explicit `fit`/`transform`; clipping bounds are learned
+on the training fold only. `CreditAnnuityRatio` preserves the original columns and
+appends one derived feature.
+
+For both the tuned LightGBM pipeline and the ratio-only XGBoost pipeline, the
+first-fold fitted bundle was serialized to a temporary directory and loaded in a
+fresh Python process. The existing FastAPI `/predict` route returned HTTP 200 with
+the unchanged `default_probability`, `predicted_default`, and `threshold` keys for
+the synthetic example request. Temporary candidate bundles were removed after the
+smoke check.
+
+The existing production Docker image still does not contain the `experiments`
+package or LightGBM runtime dependency. The experimental bundles are therefore
+not deployable in that image without a separate, approved production packaging
+change. No such change is part of this experiment.

@@ -72,7 +72,8 @@ class HomeCreditFeatures(BaseEstimator, TransformerMixin):
 
     @classmethod
     def _generate(cls, X: pd.DataFrame) -> pd.DataFrame:
-        out = X.copy()
+        # Prevent infinities in raw numeric inputs from reaching SimpleImputer.
+        out = X.replace([np.inf, -np.inf], np.nan).copy()
         employed = out["DAYS_EMPLOYED"]
         out["DAYS_EMPLOYED_365243"] = employed.eq(365243).astype("int8")
         # 365243 is Home Credit's sentinel for unavailable employment duration.
@@ -103,6 +104,44 @@ class HomeCreditFeatures(BaseEstimator, TransformerMixin):
             "EXT_SOURCE_MEAN", "EXT_SOURCE_STD",
         ])
         return np.asarray(names, dtype=object)
+
+
+class CreditAnnuityRatio(BaseEstimator, TransformerMixin):
+    """Append a train-clipped credit-to-annuity ratio without altering raw inputs."""
+
+    def fit(self, X: pd.DataFrame, y: pd.Series | None = None):
+        self.feature_names_in_ = np.asarray(X.columns, dtype=object)
+        ratio = self._calculate(X)
+        finite = ratio.replace([np.inf, -np.inf], np.nan).dropna()
+        if len(finite):
+            self.clip_bounds_ = tuple(float(v) for v in finite.quantile([0.005, 0.995]))
+        else:
+            self.clip_bounds_ = (float("nan"), float("nan"))
+        return self
+
+    @staticmethod
+    def _calculate(X: pd.DataFrame) -> pd.Series:
+        numerator = X["AMT_CREDIT"].replace([np.inf, -np.inf], np.nan)
+        annuity = X["AMT_ANNUITY"].replace([np.inf, -np.inf], np.nan)
+        denominator = annuity.where(annuity > 0)
+        return (numerator / denominator).replace([np.inf, -np.inf], np.nan)
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        expected = list(self.feature_names_in_)
+        if list(X.columns) != expected:
+            raise ValueError("Input columns or their order differ from the fitted schema.")
+        if "CREDIT_ANNUITY_RATIO" in X.columns:
+            raise ValueError("CREDIT_ANNUITY_RATIO is already present in the input.")
+        # Keep raw inputs unchanged except for converting invalid infinities to
+        # missing values, which the fitted preprocessing pipeline can impute.
+        out = X.replace([np.inf, -np.inf], np.nan).copy()
+        out["CREDIT_ANNUITY_RATIO"] = self._calculate(X).clip(
+            lower=self.clip_bounds_[0], upper=self.clip_bounds_[1]
+        )
+        return out
+
+    def get_feature_names_out(self, input_features=None):
+        return np.asarray([*self.feature_names_in_, "CREDIT_ANNUITY_RATIO"], dtype=object)
 
 
 class RssMonitor:
