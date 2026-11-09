@@ -76,13 +76,13 @@ def make_preprocessor(X_train: pd.DataFrame) -> tuple[ColumnTransformer, list[st
 def main() -> None:
     if not DATA_PATH.is_file():
         raise FileNotFoundError(
-            f"Falta {DATA_PATH}. Descarga application_train.csv desde la competición "
-            "oficial de Kaggle tras aceptar sus reglas."
+            f"Missing {DATA_PATH}. Download application_train.csv from the official "
+            "Kaggle competition after accepting its rules."
         )
 
     df = pd.read_csv(DATA_PATH)
     if "TARGET" not in df or "SK_ID_CURR" not in df:
-        raise ValueError("El CSV no tiene el esquema de train esperado.")
+        raise ValueError("The CSV does not match the expected training schema.")
     y = df["TARGET"].astype("int8")
     X = df.drop(columns=["SK_ID_CURR", "TARGET"])
     if "TARGET" in X or "SK_ID_CURR" in X:

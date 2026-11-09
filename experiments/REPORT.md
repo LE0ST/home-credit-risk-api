@@ -1,94 +1,96 @@
-# Informe Fase 4B
+# Phase 4B report
 
-## Protocolo
+## Protocol
 
-- Checkpoint funcional: `af6fce6` (`feat: establish reproducible home credit ML baseline`).
-- Rama original `master` conserva ese commit. La exploración está en
+- Functional checkpoint: `af6fce6` (`feat: establish reproducible home credit ML baseline`).
+- The original `master` branch retains that commit. Experiments are on
   `exp/feature-engineering`.
-- Semilla 42; split estratificado 60/20/20, igual al del proyecto; dos hilos.
-- El CSV de desarrollo se usó para construir train y validation. No se calcularon
-  métricas, umbrales ni comparaciones en la partición test. Los scripts no guardan
-  modelos candidatos.
-- Versiones: scikit-learn 1.9.1, XGBoost 3.2.0 y LightGBM 4.7.0.
-- El preprocesamiento y los límites de recorte se ajustan dentro de cada pipeline;
-  en CV se vuelven a ajustar desde cero en cada fold.
+- Seed 42; the established stratified 60/20/20 split; two threads.
+- The development CSV was used to construct the training and validation sets. No
+  metrics, thresholds, or model comparisons were computed on the test partition.
+  The scripts do not save candidate models.
+- Versions: scikit-learn 1.9.1, XGBoost 3.2.0, and LightGBM 4.7.0.
+- Preprocessing and clipping limits are fitted within each pipeline. Each CV fold
+  fits them again using that fold's training rows only.
 
-## Resultados en validation
+## Validation results
 
-Las métricas del baseline son las comunicadas antes de esta fase. Los tiempos son
-fit más predicción de validation. RSS es el máximo observado del proceso durante
-cada ajuste; incluye los datos y el preprocesamiento.
+Baseline metrics below are those reported before this phase. Times include fitting
+and validation prediction. RSS is the maximum process resident memory observed
+during each fit, including data and preprocessing.
 
-| Modelo | ROC-AUC | Average Precision | Segundos | RSS máximo |
+| Model | ROC-AUC | Average Precision | Seconds | Peak RSS |
 |---|---:|---:|---:|---:|
-| XGBoost referencia comunicada | 0.755089 | 0.243390 | — | — |
-| XGBoost base + 8 features derivadas | 0.759695 | 0.247879 | 10.03 | 1,526 MiB |
-| XGBoost ajustado + features | 0.760463 | 0.248969 | 11.04 | 1,736 MiB |
-| XGBoost base + features, sin `CODE_GENDER` | 0.758950 | 0.247849 | 9.85 | 1,624 MiB |
-| LightGBM inicial + features | 0.766480 | 0.254957 | 20.46 | 1,596 MiB |
-| LightGBM ajustado + features | **0.767261** | **0.256644** | 26.25 | 1,780 MiB |
+| Reported XGBoost reference | 0.755089 | 0.243390 | — | — |
+| Base XGBoost + 8 engineered features | 0.759695 | 0.247879 | 10.03 | 1,526 MiB |
+| Tuned XGBoost + features | 0.760463 | 0.248969 | 11.04 | 1,736 MiB |
+| Base XGBoost + features, without `CODE_GENDER` | 0.758950 | 0.247849 | 9.85 | 1,624 MiB |
+| Initial LightGBM + features | 0.766480 | 0.254957 | 20.46 | 1,596 MiB |
+| Tuned LightGBM + features | **0.767261** | **0.256644** | 26.25 | 1,780 MiB |
 
-Parámetros de XGBoost base: 180 árboles, profundidad 4, tasa 0.06, `min_child_weight=10`,
-`subsample=0.8`, `colsample_bytree=0.8`, `reg_lambda=5`, `max_bin=128`.
-El ajuste pequeño usa 220 árboles, tasa 0.05 y `min_child_weight=8`; conserva el
-resto. LightGBM inicial usa 500 árboles, tasa 0.05, 31 hojas, mínimo 50 filas por
-hoja y `reg_lambda=5`. El ajuste usa 700 árboles, tasa 0.035, 31 hojas, mínimo 100
-filas por hoja y `reg_lambda=8`; ambos usan muestreo de filas/columnas 0.8 y dos
-hilos.
+Base XGBoost parameters: 180 trees, depth 4, learning rate 0.06,
+`min_child_weight=10`, `subsample=0.8`, `colsample_bytree=0.8`, `reg_lambda=5`,
+and `max_bin=128`. The small adjustment uses 220 trees, learning rate 0.05, and
+`min_child_weight=8`; the remaining parameters are unchanged. Initial LightGBM
+uses 500 trees, learning rate 0.05, 31 leaves, 50 minimum rows per leaf, and
+`reg_lambda=5`. The adjustment uses 700 trees, learning rate 0.035, 31 leaves,
+100 minimum rows per leaf, and `reg_lambda=8`; both use row/column sampling of 0.8
+and two threads.
 
-La variante ajustada de LightGBM lidera el split fijo por +0.012172 ROC-AUC y
-+0.013254 AP frente a la referencia comunicada. XGBoost con las nuevas features
-mejora +0.004606 ROC-AUC y +0.004489 AP frente a esa referencia. La ablación
-reentrenada sin ingeniería dio 0.755400 / 0.244557, mientras el XGBoost base con
-todas las features dio 0.759695 / 0.247879; ese control local difiere ligeramente
-de las métricas históricas.
+Tuned LightGBM leads on the fixed validation split by +0.012172 ROC-AUC and
++0.013254 AP against the reported reference. XGBoost with all engineered features
+improves by +0.004606 ROC-AUC and +0.004489 AP. A local refit without feature
+engineering scored 0.755400 / 0.244557, while base XGBoost with all engineered
+features scored 0.759695 / 0.247879; the local control differs slightly from the
+historical metrics.
 
-## Contribución de las features
+## Feature contribution
 
-Se probaron `CREDIT_INCOME_RATIO`, `ANNUITY_INCOME_RATIO`,
+The experiment evaluated `CREDIT_INCOME_RATIO`, `ANNUITY_INCOME_RATIO`,
 `CREDIT_ANNUITY_RATIO`, `EMPLOYED_TO_AGE_RATIO`, `INCOME_PER_PERSON`,
-`EXT_SOURCE_MEAN`, `EXT_SOURCE_STD` e indicador de `DAYS_EMPLOYED=365243`.
-Denominadores no positivos se convierten en faltantes (cero también para la edad),
-se reemplaza el sentinela y se agrega su indicador, y las razones se recortan en
-cuantiles 0.5%/99.5% aprendidos solo en train.
+`EXT_SOURCE_MEAN`, `EXT_SOURCE_STD`, and the `DAYS_EMPLOYED=365243` indicator.
+Non-positive denominators become missing values (zero is also invalid for age),
+the sentinel is replaced and flagged, and ratios are clipped to the 0.5th and
+99.5th percentiles fitted on training rows only.
 
-En la ablación XGBoost sobre el mismo split, el conjunto de features subió AP de
-0.244557 a 0.247879. `CREDIT_ANNUITY_RATIO` fue la feature con señal marginal más
-clara: al quitarla de las ocho, AP cayó a 0.244489; como única feature derivada,
-obtuvo 0.250715 (ROC-AUC 0.761262). Quitar cualquiera de las otras siete, una a una,
-produjo un AP mayor que el conjunto completo en este split. Esto sugiere probar un
-conjunto más pequeño; no prueba que esas variables sean universalmente inútiles.
+In the XGBoost ablation on the same split, the full feature set raised AP from
+0.244557 to 0.247879. `CREDIT_ANNUITY_RATIO` showed the clearest marginal signal:
+removing it from the eight features reduced AP to 0.244489; as the only engineered
+input feature, it achieved 0.250715 (ROC-AUC 0.761262). Removing any of the other
+seven features one at a time produced higher AP than the full set on this split.
+This suggests testing a smaller set; it does not show that these features are
+universally unhelpful.
 
-Sin `CODE_GENDER`, XGBoost obtuvo 0.758950 / 0.247849, frente a
-0.759695 / 0.247879 con la columna. La diferencia en AP es −0.000030. Es una
-comparación predictiva de validation y no una evaluación de equidad.
+Without `CODE_GENDER`, XGBoost scored 0.758950 / 0.247849, compared with
+0.759695 / 0.247879 with the feature. The AP difference is −0.000030. This is a
+validation prediction comparison, not a fairness evaluation.
 
-## Validación cruzada
+## Cross-validation
 
-CV estratificada de tres folds, únicamente sobre las 184,506 filas del train (la
-validation de 61,502 filas quedó fuera). Los valores son media ± desviación
-estándar entre folds:
+Three-fold stratified CV used only the 184,506 training rows; the 61,502 validation
+rows were excluded. Values are mean ± standard deviation across folds:
 
-| Modelo | ROC-AUC | Average Precision | Tiempo total CV |
+| Model | ROC-AUC | Average Precision | Total CV time |
 |---|---:|---:|---:|
-| LightGBM ajustado + features | 0.762720 ± 0.001538 | **0.245235 ± 0.005388** | 54.44 s |
-| LightGBM inicial + features | 0.760665 ± 0.001728 | 0.242435 ± 0.005484 | 42.20 s |
-| XGBoost ajustado + features | 0.757857 ± 0.001854 | 0.240012 ± 0.006688 | 22.50 s |
+| Tuned LightGBM + features | 0.762720 ± 0.001538 | **0.245235 ± 0.005388** | 54.44 s |
+| Initial LightGBM + features | 0.760665 ± 0.001728 | 0.242435 ± 0.005484 | 42.20 s |
+| Tuned XGBoost + features | 0.757857 ± 0.001854 | 0.240012 ± 0.006688 | 22.50 s |
 
-La CV respalda a LightGBM en promedio, aunque su AP varía entre folds. Sus folds
-entrenan con menos filas que el ajuste usado para validation, así que sus valores
-absolutos no son directamente equivalentes a las métricas del split fijo.
+CV supports LightGBM on average, although its AP varies across folds. Each fold is
+trained on fewer rows than the model evaluated on the fixed validation split, so
+the absolute values are not directly comparable.
 
-## Candidato y límites
+## Candidate and limitations
 
-Propongo **LightGBM ajustado con features** para una siguiente ronda de confirmación:
-lidera ROC-AUC y AP en validation, y también las medias CV entre los candidatos
-probados. La variante XGBoost que usa solo `CREDIT_ANNUITY_RATIO` es otra hipótesis
-prometedora y más sencilla, pero solo se midió en el split fijo y requiere CV antes
-de considerarla con más peso. No se propone ningún cambio de producción ni umbral.
+Tuned **LightGBM with the engineered features** is the candidate proposed for a
+further confirmation round: it leads ROC-AUC and AP on validation and also has the
+best CV means among the tested candidates. XGBoost with only `CREDIT_ANNUITY_RATIO`
+is another promising, simpler hypothesis, but it was measured only on the fixed
+split and needs CV before it should carry more weight. No production change or
+threshold change is proposed.
 
-Las ablaciones múltiples se hicieron sobre una misma validation, por lo que pueden
-favorecer accidentalmente algunas combinaciones. No se evaluó test, no se creó un
-nuevo umbral y no se entrenó con datos privados de GCI World. Docker/API no se
-modificaron ni se volvieron a ejecutar; sus pruebas y documentación se conservan en
-el commit baseline. El entorno local recibió LightGBM solo como dependencia `dev`.
+Multiple ablations used the same validation split and may favor some combinations
+by chance. The test set was not evaluated, no new threshold was selected, and no
+private GCI World data was used for training. Docker and the API were not changed
+or rerun; their tests and documentation remain in the baseline commit. LightGBM
+was added only to the local development dependency group.

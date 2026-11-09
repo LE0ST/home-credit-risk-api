@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict
 
 MODEL_PATH = Path(__file__).resolve().parent / "models" / "xgb_home_credit.joblib"
 if not MODEL_PATH.is_file():
-    raise RuntimeError("Modelo no entrenado; ejecuta `uv run python train.py` primero.")
+    raise RuntimeError("Model is not trained; run `uv run python train.py` first.")
 BUNDLE = joblib.load(MODEL_PATH)
 FEATURE_COLUMNS: list[str] = BUNDLE["feature_columns"]
 FEATURE_TYPES: dict[str, str] = BUNDLE["feature_types"]
@@ -31,15 +31,15 @@ def validate_features(features: dict[str, Any]) -> dict[str, Any]:
     """Require the model's exact feature schema and reject IDs/target/invalid values."""
     forbidden = {"TARGET", "SK_ID_CURR"}.intersection(features)
     if forbidden:
-        raise ValueError(f"No se admiten columnas objetivo o identificadores: {sorted(forbidden)}")
+        raise ValueError(f"Target and identifier columns are not allowed: {sorted(forbidden)}")
     missing = set(FEATURE_COLUMNS) - set(features)
     extra = set(features) - set(FEATURE_COLUMNS)
     if missing or extra:
         details = []
         if missing:
-            details.append(f"faltan columnas: {sorted(missing)}")
+            details.append(f"missing columns: {sorted(missing)}")
         if extra:
-            details.append(f"columnas no esperadas: {sorted(extra)}")
+            details.append(f"unexpected columns: {sorted(extra)}")
         raise ValueError("; ".join(details))
 
     clean: dict[str, Any] = {}
@@ -49,14 +49,14 @@ def validate_features(features: dict[str, Any]) -> dict[str, Any]:
             clean[column] = np_nan()
         elif FEATURE_TYPES[column] == "numeric":
             if isinstance(value, bool) or not isinstance(value, (int, float)):
-                raise ValueError(f"{column} debe ser un número o null")
+                raise ValueError(f"{column} must be a number or null")
             if not math.isfinite(float(value)):
-                raise ValueError(f"{column} debe ser finito")
+                raise ValueError(f"{column} must be finite")
             clean[column] = value
         elif isinstance(value, str):
             clean[column] = value
         else:
-            raise ValueError(f"{column} debe ser texto o null")
+            raise ValueError(f"{column} must be text or null")
     return clean
 
 

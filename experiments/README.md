@@ -1,11 +1,12 @@
-# Fase 4B: experimentos de validación
+# Phase 4B: validation experiments
 
-Estos scripts y resultados pertenecen a `exp/feature-engineering`. No sustituyen
-`models/xgb_home_credit.joblib`, `predict.py`, `Dockerfile` ni el umbral funcional.
+These scripts and results are on `exp/feature-engineering`. They do not replace
+`models/xgb_home_credit.joblib`, `predict.py`, `Dockerfile`, or the production
+decision threshold.
 
-## Reproducir
+## Reproduce
 
-Con Python 3.11 y el CSV autorizado `data/raw/application_train.csv`:
+With Python 3.11 and the authorized CSV at `data/raw/application_train.csv`:
 
 ```bash
 uv sync --group dev
@@ -15,32 +16,32 @@ uv run python experiments/feature_ablation.py
 uv run python experiments/feature_isolation.py
 ```
 
-LightGBM 4.7.0 está fijado en el grupo de dependencias `dev`; el Dockerfile
-instala dependencias de runtime con `--no-dev`. Los tres scripts usan semilla 42,
-dos hilos y el split estratificado ya definido: train 60%, validation 20%, test
-20%. Para evaluación, materializan únicamente train y validation. CV y ablación
-operan solo sobre train o validation según se indica; nunca calculan métricas para
-test.
+LightGBM 4.7.0 is pinned in the `dev` dependency group; the Dockerfile installs
+runtime dependencies with `--no-dev`. The scripts use seed 42, two threads, and
+the established stratified split: 60% training, 20% validation, and 20% test.
+Only training and validation feature rows are materialized for the comparisons.
+Cross-validation and ablation use the partitions described below; no test metrics
+are calculated.
 
-## Transformaciones
+## Transformations
 
-`HomeCreditFeatures` es un transformador scikit-learn con `fit` y `transform`.
-Convierte denominadores no positivos (o cero para edad) en faltantes, elimina el
-sentinela `DAYS_EMPLOYED=365243` del valor continuo y agrega su indicador. Calcula
-las cinco razones, así como media y desviación estándar fila a fila de EXT_SOURCE.
-Los límites de recorte de razones son los cuantiles 0.5% y 99.5% aprendidos solo
-con las filas de `fit`; en CV cada fold aprende sus propios límites. El resto de
-faltantes se imputa en el pipeline de preprocesamiento.
+`HomeCreditFeatures` is a scikit-learn transformer with `fit` and `transform`.
+Non-positive denominators (and zero for age) become missing values. The
+`DAYS_EMPLOYED=365243` sentinel is removed from the continuous value and represented
+by an indicator. The transformer calculates five ratios and row-wise mean and
+standard deviation for EXT_SOURCE. Ratio clipping limits are the 0.5th and 99.5th
+percentiles fitted only on rows passed to `fit`; each cross-validation fold learns
+its own limits. The preprocessing pipeline imputes remaining missing values.
 
-## Resultados
+## Results
 
-- `validation_results.json`: métricas, parámetros, versiones, tiempos, RSS,
-  configuración de semillas y CV estratificada de tres folds.
-- `feature_ablation.json`: comparación XGBoost sin nuevas features y ablación de
-  una feature cada vez respecto al conjunto completo.
-- `feature_isolation.json`: prueba de `CREDIT_ANNUITY_RATIO` como única feature
-  derivada.
+- `validation_results.json`: metrics, parameters, versions, fit times, RSS, seeds,
+  and three-fold stratified cross-validation.
+- `feature_ablation.json`: XGBoost comparison without engineered features and
+  one-at-a-time feature ablations against the full feature set.
+- `feature_isolation.json`: test of `CREDIT_ANNUITY_RATIO` as the only engineered
+  input feature.
 
-Las métricas de validation orientan la investigación y no son una evaluación
-independiente final. La variante sin `CODE_GENDER` es una sensibilidad de entrada;
-no es una evaluación de equidad.
+Validation metrics guide the experiment and are not an independent final
+evaluation. The `CODE_GENDER` variant is a predictive sensitivity check, not a
+fairness evaluation.
