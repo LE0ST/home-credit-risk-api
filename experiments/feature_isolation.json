@@ -1,0 +1,42 @@
+{
+  "model": "XGBoost base + CREDIT_ANNUITY_RATIO only",
+  "omitted_features": [
+    "DAYS_EMPLOYED_365243",
+    "CREDIT_INCOME_RATIO",
+    "ANNUITY_INCOME_RATIO",
+    "EMPLOYED_TO_AGE_RATIO",
+    "INCOME_PER_PERSON",
+    "EXT_SOURCE_MEAN",
+    "EXT_SOURCE_STD"
+  ],
+  "roc_auc": 0.7612615599288232,
+  "average_precision": 0.25071493586519017,
+  "seconds": 10.257361498996033,
+  "rss_peak_mib": 1573.4,
+  "seed": 42,
+  "threads": 2,
+  "parameters": {
+    "n_estimators": 180,
+    "max_depth": 4,
+    "learning_rate": 0.06,
+    "min_child_weight": 10,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 5,
+    "max_bin": 128,
+    "tree_method": "hist",
+    "n_jobs": 2,
+    "random_state": 42,
+    "eval_metric": "logloss",
+    "objective": "binary:logistic"
+  },
+  "test_partition_evaluated_or_used_for_selection": false,
+  "baseline_reference": {
+    "roc_auc": 0.755089,
+    "average_precision": 0.24339
+  },
+  "full_engineered_xgb": {
+    "roc_auc": 0.7596951962640084,
+    "average_precision": 0.2478794816759051
+  }
+}

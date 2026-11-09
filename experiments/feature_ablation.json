@@ -1,0 +1,308 @@
+{
+  "feature_engineering_scope": [
+    "DAYS_EMPLOYED_365243",
+    "CREDIT_INCOME_RATIO",
+    "ANNUITY_INCOME_RATIO",
+    "CREDIT_ANNUITY_RATIO",
+    "EMPLOYED_TO_AGE_RATIO",
+    "INCOME_PER_PERSON",
+    "EXT_SOURCE_MEAN",
+    "EXT_SOURCE_STD"
+  ],
+  "clip_quantiles_fit_on_training_partition_only": [
+    0.005,
+    0.995
+  ],
+  "reference_validation": {
+    "roc_auc": 0.755089,
+    "average_precision": 0.24339
+  },
+  "results": [
+    {
+      "model": "No engineered features",
+      "omitted_features": [
+        "DAYS_EMPLOYED_365243",
+        "CREDIT_INCOME_RATIO",
+        "ANNUITY_INCOME_RATIO",
+        "CREDIT_ANNUITY_RATIO",
+        "EMPLOYED_TO_AGE_RATIO",
+        "INCOME_PER_PERSON",
+        "EXT_SOURCE_MEAN",
+        "EXT_SOURCE_STD"
+      ],
+      "roc_auc": 0.7553995021235814,
+      "average_precision": 0.24455713089777548,
+      "fit_and_validation_predict_seconds": 9.674615283998719,
+      "rss_peak_mib": 1406.4,
+      "rss_delta_peak_mib": 771.7,
+      "threads": 2,
+      "seed": 42,
+      "parameters": {
+        "n_estimators": 180,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 10,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 5,
+        "max_bin": 128,
+        "tree_method": "hist",
+        "n_jobs": 2,
+        "random_state": 42,
+        "eval_metric": "logloss",
+        "objective": "binary:logistic"
+      },
+      "delta_average_precision_vs_no_engineered_features": 0.0,
+      "delta_average_precision_vs_all_engineered_features": -0.003322350778129618
+    },
+    {
+      "model": "All except DAYS_EMPLOYED_365243",
+      "omitted_features": [
+        "DAYS_EMPLOYED_365243"
+      ],
+      "roc_auc": 0.7608739108563702,
+      "average_precision": 0.24928637074019988,
+      "fit_and_validation_predict_seconds": 11.068719599999895,
+      "rss_peak_mib": 1775.4,
+      "rss_delta_peak_mib": 1140.7,
+      "threads": 2,
+      "seed": 42,
+      "parameters": {
+        "n_estimators": 180,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 10,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 5,
+        "max_bin": 128,
+        "tree_method": "hist",
+        "n_jobs": 2,
+        "random_state": 42,
+        "eval_metric": "logloss",
+        "objective": "binary:logistic"
+      },
+      "delta_average_precision_vs_no_engineered_features": 0.004729239842424404,
+      "delta_average_precision_vs_all_engineered_features": 0.0014068890642947862
+    },
+    {
+      "model": "All except CREDIT_INCOME_RATIO",
+      "omitted_features": [
+        "CREDIT_INCOME_RATIO"
+      ],
+      "roc_auc": 0.7604638896386349,
+      "average_precision": 0.24847263456992552,
+      "fit_and_validation_predict_seconds": 11.066106060003222,
+      "rss_peak_mib": 1777.3,
+      "rss_delta_peak_mib": 1142.6,
+      "threads": 2,
+      "seed": 42,
+      "parameters": {
+        "n_estimators": 180,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 10,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 5,
+        "max_bin": 128,
+        "tree_method": "hist",
+        "n_jobs": 2,
+        "random_state": 42,
+        "eval_metric": "logloss",
+        "objective": "binary:logistic"
+      },
+      "delta_average_precision_vs_no_engineered_features": 0.003915503672150045,
+      "delta_average_precision_vs_all_engineered_features": 0.0005931528940204267
+    },
+    {
+      "model": "All except ANNUITY_INCOME_RATIO",
+      "omitted_features": [
+        "ANNUITY_INCOME_RATIO"
+      ],
+      "roc_auc": 0.7602232964533149,
+      "average_precision": 0.24986524839681068,
+      "fit_and_validation_predict_seconds": 11.068775369996729,
+      "rss_peak_mib": 1683.5,
+      "rss_delta_peak_mib": 1048.9,
+      "threads": 2,
+      "seed": 42,
+      "parameters": {
+        "n_estimators": 180,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 10,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 5,
+        "max_bin": 128,
+        "tree_method": "hist",
+        "n_jobs": 2,
+        "random_state": 42,
+        "eval_metric": "logloss",
+        "objective": "binary:logistic"
+      },
+      "delta_average_precision_vs_no_engineered_features": 0.005308117499035203,
+      "delta_average_precision_vs_all_engineered_features": 0.001985766720905585
+    },
+    {
+      "model": "All except CREDIT_ANNUITY_RATIO",
+      "omitted_features": [
+        "CREDIT_ANNUITY_RATIO"
+      ],
+      "roc_auc": 0.7547570973716096,
+      "average_precision": 0.244488828216542,
+      "fit_and_validation_predict_seconds": 11.068320370999572,
+      "rss_peak_mib": 1559.6,
+      "rss_delta_peak_mib": 924.9,
+      "threads": 2,
+      "seed": 42,
+      "parameters": {
+        "n_estimators": 180,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 10,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 5,
+        "max_bin": 128,
+        "tree_method": "hist",
+        "n_jobs": 2,
+        "random_state": 42,
+        "eval_metric": "logloss",
+        "objective": "binary:logistic"
+      },
+      "delta_average_precision_vs_no_engineered_features": -6.83026812334786e-05,
+      "delta_average_precision_vs_all_engineered_features": -0.0033906534593630966
+    },
+    {
+      "model": "All except EMPLOYED_TO_AGE_RATIO",
+      "omitted_features": [
+        "EMPLOYED_TO_AGE_RATIO"
+      ],
+      "roc_auc": 0.7609432110700938,
+      "average_precision": 0.24976405663137535,
+      "fit_and_validation_predict_seconds": 11.074738029994478,
+      "rss_peak_mib": 1705.6,
+      "rss_delta_peak_mib": 1070.9,
+      "threads": 2,
+      "seed": 42,
+      "parameters": {
+        "n_estimators": 180,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 10,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 5,
+        "max_bin": 128,
+        "tree_method": "hist",
+        "n_jobs": 2,
+        "random_state": 42,
+        "eval_metric": "logloss",
+        "objective": "binary:logistic"
+      },
+      "delta_average_precision_vs_no_engineered_features": 0.005206925733599876,
+      "delta_average_precision_vs_all_engineered_features": 0.0018845749554702584
+    },
+    {
+      "model": "All except INCOME_PER_PERSON",
+      "omitted_features": [
+        "INCOME_PER_PERSON"
+      ],
+      "roc_auc": 0.7606249156480172,
+      "average_precision": 0.25032468498033905,
+      "fit_and_validation_predict_seconds": 11.256654780001554,
+      "rss_peak_mib": 1759.6,
+      "rss_delta_peak_mib": 1124.9,
+      "threads": 2,
+      "seed": 42,
+      "parameters": {
+        "n_estimators": 180,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 10,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 5,
+        "max_bin": 128,
+        "tree_method": "hist",
+        "n_jobs": 2,
+        "random_state": 42,
+        "eval_metric": "logloss",
+        "objective": "binary:logistic"
+      },
+      "delta_average_precision_vs_no_engineered_features": 0.005767554082563575,
+      "delta_average_precision_vs_all_engineered_features": 0.002445203304433957
+    },
+    {
+      "model": "All except EXT_SOURCE_MEAN",
+      "omitted_features": [
+        "EXT_SOURCE_MEAN"
+      ],
+      "roc_auc": 0.7611926230843383,
+      "average_precision": 0.2502877878881427,
+      "fit_and_validation_predict_seconds": 11.085104609002883,
+      "rss_peak_mib": 1667.6,
+      "rss_delta_peak_mib": 1032.9,
+      "threads": 2,
+      "seed": 42,
+      "parameters": {
+        "n_estimators": 180,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 10,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 5,
+        "max_bin": 128,
+        "tree_method": "hist",
+        "n_jobs": 2,
+        "random_state": 42,
+        "eval_metric": "logloss",
+        "objective": "binary:logistic"
+      },
+      "delta_average_precision_vs_no_engineered_features": 0.005730656990367233,
+      "delta_average_precision_vs_all_engineered_features": 0.0024083062122376153
+    },
+    {
+      "model": "All except EXT_SOURCE_STD",
+      "omitted_features": [
+        "EXT_SOURCE_STD"
+      ],
+      "roc_auc": 0.7602501020595537,
+      "average_precision": 0.24928832818098973,
+      "fit_and_validation_predict_seconds": 10.45224487700034,
+      "rss_peak_mib": 1774.5,
+      "rss_delta_peak_mib": 1139.8,
+      "threads": 2,
+      "seed": 42,
+      "parameters": {
+        "n_estimators": 180,
+        "max_depth": 4,
+        "learning_rate": 0.06,
+        "min_child_weight": 10,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 5,
+        "max_bin": 128,
+        "tree_method": "hist",
+        "n_jobs": 2,
+        "random_state": 42,
+        "eval_metric": "logloss",
+        "objective": "binary:logistic"
+      },
+      "delta_average_precision_vs_no_engineered_features": 0.00473119728321425,
+      "delta_average_precision_vs_all_engineered_features": 0.0014088465050846322
+    }
+  ],
+  "no_engineered_features_validation": {
+    "roc_auc": 0.7553995021235814,
+    "average_precision": 0.24455713089777548
+  },
+  "all_engineered_features_validation": {
+    "roc_auc": 0.7596951962640084,
+    "average_precision": 0.2478794816759051
+  },
+  "test_partition_evaluated_or_used_for_selection": false
+}
