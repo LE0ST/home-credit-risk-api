@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import os
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +11,11 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-MODEL_PATH = Path(__file__).resolve().parent / "models" / "xgb_home_credit.joblib"
+MODEL_SELECTION = os.environ.get("HOME_CREDIT_MODEL", "lightgbm")
+MODEL_FILES = {"lightgbm": "lightgbm_home_credit.joblib", "xgboost": "xgb_home_credit.joblib"}
+if MODEL_SELECTION not in MODEL_FILES:
+    raise RuntimeError("HOME_CREDIT_MODEL must be lightgbm or xgboost")
+MODEL_PATH = Path(__file__).resolve().parent / "models" / MODEL_FILES[MODEL_SELECTION]
 if not MODEL_PATH.is_file():
     raise RuntimeError("Model is not trained; run `uv run python train.py` first.")
 BUNDLE = joblib.load(MODEL_PATH)

@@ -22,8 +22,8 @@ RUN apt-get update \
     && useradd --create-home --uid 10001 appuser
 
 COPY --from=builder --chown=appuser:appuser /opt/venv /opt/venv
-COPY --chown=appuser:appuser predict.py feature_schema.json ./
-COPY --chown=appuser:appuser models/xgb_home_credit.joblib ./models/xgb_home_credit.joblib
+COPY --chown=appuser:appuser predict.py credit_features.py feature_schema.json ./
+COPY --chown=appuser:appuser models/xgb_home_credit.joblib models/lightgbm_home_credit.joblib ./models/
 
 USER appuser
 EXPOSE 8000

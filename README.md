@@ -20,7 +20,7 @@ The Phase 1 split is preserved, and the test set is not used for model selection
 
 ## Phase 3: training and local API
 
-The complete input contract (120 columns and observed types) is in `feature_schema.json`. Each request to `/predict` must include a JSON object with all expected features. `TARGET`, `SK_ID_CURR`, missing fields, and extra fields are rejected. Represent missing values as `null`; the pipeline imputes them. The response contains `default_probability`, `predicted_default`, and the frozen decision threshold `0.161378`.
+The complete input contract (120 columns and observed types) is in `feature_schema.json`. Each request to `/predict` must include a JSON object with all expected features. `TARGET`, `SK_ID_CURR`, missing fields, and extra fields are rejected. Represent missing values as `null`; the pipeline imputes them. The response contains `default_probability`, `predicted_default`, and the selected model’s decision threshold. The XGBoost baseline uses `0.161378`; LightGBM uses `0.1566716424524132`.
 
 To train from scratch, place the authorized competition file at `data/raw/application_train.csv` and run:
 
@@ -53,44 +53,59 @@ The final training run (180 trees, depth 4, `learning_rate=0.06`, threshold `0.1
 
 The automated test confirms that `predict_record` and FastAPI return exactly the same prediction for a training row. The Phase 2 notebook evaluates a candidate trained on the training set. The final model is refit on training plus validation, so its probabilities are not a row-by-row equivalent comparison, even though the preprocessing is the same.
 
-## Phase 4: local Docker deployment
+## Production Docker image
 
-### Requirements
+The image serves the included LightGBM pipeline by default and also includes the
+preserved XGBoost baseline. It needs Docker, both artifacts in `models/`, and
+no competition CSV. The build context is restricted to the production inputs;
+the runtime contains neither training data nor development tools.
 
-- Docker Engine with an active daemon.
-- The `models/xgb_home_credit.joblib` artifact and `feature_schema.json` included in the clone.
-- The original CSV is not required to build or run the container.
+The multi-stage build uses Python 3.11, uv 0.12.23 and `uv.lock` to install only
+runtime dependencies. It uses CPU-only XGBoost, LightGBM, and `libgomp1` for
+OpenMP, and runs as an unprivileged user. `credit_features.py` supplies the
+feature transformer required to load the LightGBM artifact. The prediction
+pipeline computes all engineered features from the original 120 fields.
 
-The approved model is the only Git exception under `models/`; CSV files, environments, caches, and other model artifacts remain excluded. The image installs runtime dependencies from `uv.lock` with `uv sync --locked --no-dev`, uses `xgboost-cpu==3.2.0` compatible with the artifact, listens on `0.0.0.0:8000`, and runs as a non-root user.
-
-### Build and start
-
-```bash
-docker build -t home-credit-risk-api .
-docker run --rm -d --name home-credit-risk-api -p 8000:8000 home-credit-risk-api
-```
-
-### Check health and make a prediction
+Build and run LightGBM on localhost:
 
 ```bash
-curl http://localhost:8000/health
-uv run python test_predict.py --url http://127.0.0.1:8000
+docker build -t home-credit-risk-api:lightgbm .
+docker run --rm -d --name home-credit-lightgbm -p 127.0.0.1:8000:8000 home-credit-risk-api:lightgbm
+curl http://127.0.0.1:8000/health
+curl -X POST http://127.0.0.1:8000/predict -H 'Content-Type: application/json' --data-binary @examples/predict_request.json
+docker inspect --format='{{.State.Health.Status}}' home-credit-lightgbm
+docker stop home-credit-lightgbm
 ```
 
-The response includes `default_probability`, `predicted_default`, and `threshold`. The container's `HEALTHCHECK` queries `/health`; inspect it with:
+To serve the original XGBoost artifact with its own threshold, use a separate
+container and port:
 
 ```bash
-docker inspect --format='{{.State.Health.Status}}' home-credit-risk-api
+docker run --rm -d --name home-credit-xgboost -e HOME_CREDIT_MODEL=xgboost -p 127.0.0.1:8001:8000 home-credit-risk-api:lightgbm
+curl http://127.0.0.1:8001/health
+curl -X POST http://127.0.0.1:8001/predict -H 'Content-Type: application/json' --data-binary @examples/predict_request.json
+docker stop home-credit-xgboost
 ```
 
-Stop and remove the container:
-
-```bash
-docker stop home-credit-risk-api
-```
-
-The image contains the model and schema, never `data/`. A clean clone can serve predictions using the included artifact without downloading or mounting the dataset.
+Use `uv sync --locked` and `uv run pytest` to reproduce local verification.
+To reproduce the LightGBM artifact, obtain the authorized CSV as described above
+and run `uv run python train_lightgbm.py`. It selects the threshold by maximum
+F1 on the fixed validation split, then fits on train plus validation; it does
+not evaluate the held-out test set. The recorded LightGBM validation precision,
+recall and F1 are 0.2516, 0.4226 and 0.3154 respectively. These validation
+results must not be compared as if they were the XGBoost test results reported
+in Phase 3. They are educational measurements, not evidence for real lending
+or credit decisions.
 
 ## Phase 4B: controlled feature engineering experiments
 
-The `exp/feature-engineering` branch contains the recorded validation and cross-validation experiments. See [`experiments/README.md`](experiments/README.md) for reproduction steps and [`experiments/REPORT.md`](experiments/REPORT.md) for results and limitations. These experiments do not replace the production model or alter its threshold.
+The `exp/feature-engineering` branch contains the recorded validation and cross-validation experiments. See [`experiments/README.md`](experiments/README.md) for reproduction steps and [`experiments/REPORT.md`](experiments/REPORT.md) for results and limitations. The selected tuned LightGBM configuration is now integrated as the default model; the XGBoost baseline and its threshold remain available separately.
+
+### Model selection
+
+The default API model is the tuned LightGBM pipeline, which computes the approved
+features internally. Set `HOME_CREDIT_MODEL=xgboost` to serve the preserved
+XGBoost baseline and its own threshold. The LightGBM threshold is selected by
+maximum F1 on the fixed validation split; see `reports/lightgbm_validation.json`.
+Run `uv run python train_lightgbm.py` to reproduce the development-only fit.
+The held-out test set is not used by this script.

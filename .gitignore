@@ -14,3 +14,7 @@ __pycache__/
 .pytest_cache/
 .env
 .env.*
+!models/lightgbm_home_credit.joblib
+!reports/
+reports/*
+!reports/lightgbm_validation.json

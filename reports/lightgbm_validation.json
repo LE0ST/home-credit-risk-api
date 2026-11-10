@@ -1,0 +1,13 @@
+{
+  "threshold": 0.1566716424524132,
+  "precision": 0.2515889195347164,
+  "recall": 0.42255790533736154,
+  "f1": 0.3153938665063139,
+  "selection": "maximum F1 on fixed validation split",
+  "validation_rows": 61502,
+  "test_used": false,
+  "training_seconds": 30.44473913499678,
+  "training_rows": 246008,
+  "transformed_feature_count": 320,
+  "artifact_bytes": 1133884
+}
