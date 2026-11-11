@@ -1,165 +1,200 @@
 # Home Credit Default Risk Prediction
 
-This educational classification project estimates whether a loan applicant may have difficulty repaying a loan (`TARGET`). It uses only `application_train.csv` from the official [Home Credit Default Risk competition](https://www.kaggle.com/competitions/home-credit-default-risk). Kaggle may require an account and acceptance of the competition rules to download the file. No auxiliary tables are used. This model is not suitable for real credit decisions.
+**Machine Learning Zoomcamp 2026 — Midterm Project | DataTalks.Club**
+Course repository: [DataTalksClub/machine-learning-zoomcamp](https://github.com/DataTalksClub/machine-learning-zoomcamp)
 
-## Setup
+An educational project that predicts whether a loan applicant may have difficulty repaying a loan, using the [Home Credit Default Risk competition](https://www.kaggle.com/competitions/home-credit-default-risk) training data. It compares Logistic Regression, Random Forest, XGBoost, and LightGBM, and serves the selected LightGBM pipeline through FastAPI and Docker. The project uses Python, scikit-learn, and `uv` for dependency management. It is an independent course project and is not endorsed or certified by DataTalks.Club. It is for learning only, not real credit decisions.
 
-1. Download the authorized `application_train.csv` from the competition and place it at `data/raw/application_train.csv`.
-2. Install uv and project dependencies with `uv sync` (Python 3.11).
-3. To execute the notebook from the repository root, run `uv run jupyter nbconvert --to notebook --execute --inplace notebook.ipynb`.
+## Contents
 
-`data/` is excluded from Git to keep the dataset out of version control.
+- [Project overview](#project-overview)
+- [Problem description](#problem-description)
+- [Dataset](#dataset)
+- [Exploratory data analysis](#exploratory-data-analysis)
+- [Model training and selection](#model-training-and-selection)
+- [Results](#results)
+- [Project structure](#project-structure)
+- [Quick start: Docker](#quick-start-docker)
+- [API usage](#api-usage)
+- [Reproducing training and experiments](#reproducing-training-and-experiments)
+- [ML Zoomcamp rubric alignment](#ml-zoomcamp-rubric-alignment)
+- [Limitations and responsible use](#limitations-and-responsible-use)
+- [References](#references)
 
-## Phase 1: exploratory data analysis and baseline
+## Project overview
 
-The notebook reviews dimensions, data types, missing values, duplicates, distributions, and the target balance. `SK_ID_CURR` is excluded from the features, and `TARGET` remains separate as the label. The data is split into stratified 60/20/20 training, validation, and test sets (`random_state=42`). Imputation, scaling, and encoding are fitted inside a pipeline using only the training set. Logistic regression is evaluated on validation with ROC-AUC, Average Precision, precision, recall, and a confusion matrix. The test set is reserved.
+The repository contains an executed analysis notebook, reproducible training scripts, serialized model pipelines, a 120-field request schema, a FastAPI prediction service, Docker packaging, and automated tests. LightGBM is the production default; the preserved XGBoost model can be selected with an environment variable.
 
-## Phase 2: model comparison on validation
+## Problem description
 
-The Phase 1 split is preserved, and the test set is not used for model selection. The notebook compares the logistic regression baseline with two small Random Forest and XGBoost configurations. Average Precision is the primary metric because the classes are imbalanced; ROC-AUC is a complementary metric. XGBoost (180 trees, depth 4, learning rate 0.06) achieved the highest Average Precision. The notebook also records a Precision–Recall curve, threshold comparisons, feature importances, and approximate resource use. These results support validation-based model selection; the test set remains reserved.
+The target is `TARGET=1` when an applicant had difficulty repaying a loan. Missing a positive case (a false negative) can overlook repayment difficulty; flagging a negative case (a false positive) can incorrectly identify an applicant as high risk. The positive class is about **8.07%** of the data, so the project reports Average Precision (AP), which focuses on positive-class retrieval, alongside ROC-AUC, which summarizes ranking over thresholds. Neither metric establishes calibration or whether a model is suitable for lending.
 
-## Phase 3: training and local API
+## Dataset
 
-The complete input contract (120 columns and observed types) is in `feature_schema.json`. Each request to `/predict` must include a JSON object with all expected features. `TARGET`, `SK_ID_CURR`, missing fields, and extra fields are rejected. Represent missing values as `null`; the pipeline imputes them. The response contains `default_probability`, `predicted_default`, and the selected model’s decision threshold. The XGBoost baseline uses `0.161378`; LightGBM uses `0.1566716424524132`.
+The project uses only `application_train.csv` from the [Kaggle Home Credit Default Risk competition](https://www.kaggle.com/competitions/home-credit-default-risk); no auxiliary competition tables are used. A Kaggle account and acceptance of competition rules may be required. Download the authorized training CSV and place it at `data/raw/application_train.csv`. That directory is ignored by Git and the dataset is not included in this repository.
 
-To train from scratch, place the authorized competition file at `data/raw/application_train.csv` and run:
+This competition dataset is distinct from the course's Module 6 CreditScoring dataset. Their schemas, populations, and results are not interchangeable. The notebook and training code use applicant fields as predictors while excluding `TARGET` and `SK_ID_CURR` from model input.
 
-```bash
-uv sync
-uv run python train.py
+## Exploratory data analysis
+
+The [executed notebook](notebook.ipynb) includes dataset shape and types, missingness, duplicate checks, target distribution, numerical distributions, and feature-importance views. It contains aggregate analysis and plots, not individual applicant records. Feature associations and model importance are descriptive, not causal.
+
+## Model training and selection
+
+The notebook compares a Logistic Regression baseline, two Random Forest configurations, and two XGBoost configurations on a fixed stratified validation partition. Subsequent experiments add engineered features, compare XGBoost and LightGBM candidates, and confirm candidates with three-fold stratified cross-validation on the training partition. The experiment protocol, parameters, and limitations are in [experiments/REPORT.md](experiments/REPORT.md); machine-readable records are in [`experiments/`](experiments/).
+
+The selected LightGBM pipeline calculates engineered financial features internally, applies leakage-safe preprocessing, and supports missing values and unknown categories. Its threshold was selected by maximum F1 on the fixed validation split. The final approved artifact was fitted on train plus validation; the held-out test partition was not used to select or report LightGBM performance. Validation threshold optimization can be optimistic and is not an unbiased estimate of future performance.
+
+## Results
+
+Metrics below are taken from the saved notebook, experiment records, and reports. AP means Average Precision. Validation and cross-validation results are model-selection evidence; the XGBoost test result is a separate historical final evaluation and must not be compared as though measured on the same partition.
+
+| Model / configuration | Evidence and partition | ROC-AUC | AP | Additional recorded result |
+|---|---|---:|---:|---|
+| Logistic Regression baseline | Re-executed notebook, validation | 0.7468 | 0.2271 | — |
+| Random Forest 1 | Re-executed notebook, validation | 0.7381 | 0.2239 | — |
+| Random Forest 2 | Re-executed notebook, validation | 0.7394 | 0.2230 | — |
+| XGBoost 2, 180 trees | Historical Phase 2 validation reference | 0.755089 | 0.243390 | Frozen production threshold: 0.161378 |
+| XGBoost 2, 180 trees | Re-executed notebook, validation | 0.755400 | 0.244557 | Diagnostic validation F1 threshold: 0.151809; not the production threshold |
+| XGBoost, refit on train + validation | Historical held-out test evaluation | 0.760728 | 0.247628 | Precision 0.262045, recall 0.376838 at threshold 0.161378 |
+| Tuned LightGBM + engineered features | Fixed validation split | **0.767261** | **0.256644** | Precision 0.251589, recall 0.422558, F1 0.315394 at threshold 0.156672 |
+| Tuned LightGBM + engineered features | Three-fold CV on training partition, mean ± SD | 0.762720 ± 0.001538 | 0.245235 ± 0.005388 | Same three folds used for all candidates |
+
+The historical and re-executed XGBoost validation values differ slightly. The discrepancy is documented in the [experiment report](experiments/REPORT.md); the available records do not establish its cause. Historical XGBoost results and the approved artifacts and thresholds were preserved. No LightGBM test score is reported.
+
+## Project structure
+
+```text
+.
+├── notebook.ipynb                 # EDA, validation comparisons, plots
+├── train_lightgbm.py               # Selected LightGBM training pipeline
+├── train.py                        # Preserved XGBoost training and historical test evaluation
+├── predict.py                      # FastAPI application and model selection
+├── credit_features.py              # Serializable production feature transformer
+├── feature_schema.json             # 120-field API schema and feature types
+├── models/
+│   ├── lightgbm_home_credit.joblib  # Default production pipeline
+│   └── xgb_home_credit.joblib       # XGBoost fallback pipeline
+├── examples/
+│   ├── predict_request_synthetic.json
+│   └── predict_request.json         # All-null missing-value example
+├── experiments/REPORT.md           # Validation/CV protocol and findings
+├── reports/lightgbm_validation.json
+├── tests/                           # Dataset-independent API/model tests
+├── Dockerfile
+├── pyproject.toml
+└── uv.lock
 ```
 
-The script recreates the stratified 60/20/20 split with seed 42, trains on training plus validation, saves the full pipeline to `models/xgb_home_credit.joblib`, and records the single final test evaluation in `reports/test_metrics.json`. The CSV and local report are excluded from Git; the approved `models/xgb_home_credit.joblib` artifact is included.
+## Quick start: Docker
 
-Start the service in a terminal:
-
-```bash
-uv run uvicorn predict:app --host 127.0.0.1 --port 8000
-```
-
-The HTTP client uses `examples/predict_request.json` by default. It is synthetic and contains neither `TARGET` nor `SK_ID_CURR`. To create a request from one local CSV row, pass `--data`; the client removes those two columns:
-
-```bash
-uv run python test_predict.py
-```
-
-Check the API with `GET /health` and `POST /predict`. Run the consistency tests with `uv run pytest`.
-
-This project and its metrics are for educational use only and must not be used for real credit decisions.
-
-## Phase 3 results
-
-The final training run (180 trees, depth 4, `learning_rate=0.06`, threshold `0.161378`) achieved the following on the single test evaluation: ROC-AUC **0.7607**, Average Precision **0.2476**, precision **0.2620**, and recall **0.3768**. The confusion matrix was `[[51269, 5269], [3094, 1871]]`. On validation, the variant without `CODE_GENDER` achieved ROC-AUC 0.753782 and Average Precision 0.242827, compared with 0.755089 and 0.243390 with the feature; this did not change model selection.
-
-The automated test confirms that `predict_record` and FastAPI return exactly the same prediction for a training row. The Phase 2 notebook evaluates a candidate trained on the training set. The final model is refit on training plus validation, so its probabilities are not a row-by-row equivalent comparison, even though the preprocessing is the same.
-
-## Production Docker image
-
-The image serves the included LightGBM pipeline by default and also includes the
-preserved XGBoost baseline. It needs Docker, both artifacts in `models/`, and
-no competition CSV. The build context is restricted to the production inputs;
-the runtime contains neither training data nor development tools.
-
-The multi-stage build uses Python 3.11, uv 0.12.23 and `uv.lock` to install only
-runtime dependencies. It uses CPU-only XGBoost, LightGBM, and `libgomp1` for
-OpenMP, and runs as an unprivileged user. `credit_features.py` supplies the
-feature transformer required to load the LightGBM artifact. The prediction
-pipeline computes all engineered features from the original 120 fields.
-
-Build and run LightGBM on localhost:
+Docker runs the included model artifacts and does not need the Kaggle CSV. From the repository root, build and start the LightGBM API:
 
 ```bash
 docker build -t home-credit-risk-api:lightgbm .
-docker run --rm -d --name home-credit-lightgbm -p 127.0.0.1:8000:8000 home-credit-risk-api:lightgbm
-curl http://127.0.0.1:8000/health
-curl -X POST http://127.0.0.1:8000/predict -H 'Content-Type: application/json' --data-binary @examples/predict_request.json
-docker inspect --format='{{.State.Health.Status}}' home-credit-lightgbm
-docker stop home-credit-lightgbm
+docker run --rm -d --name home-credit-lightgbm \
+  -p 127.0.0.1:8000:8000 home-credit-risk-api:lightgbm
 ```
 
-To serve the original XGBoost artifact with its own threshold, use a separate
-container and port:
+The image uses Python 3.11, installs locked runtime dependencies with `uv`, includes CPU inference dependencies, and runs as a non-root user. The feature transformer and both model artifacts are included. The API has a Docker health check.
+
+## API usage
+
+Health check:
 
 ```bash
-docker run --rm -d --name home-credit-xgboost -e HOME_CREDIT_MODEL=xgboost -p 127.0.0.1:8001:8000 home-credit-risk-api:lightgbm
+curl http://127.0.0.1:8000/health
+```
+
+Make a prediction with the committed synthetic example:
+
+```bash
+curl -X POST http://127.0.0.1:8000/predict \
+  -H 'Content-Type: application/json' \
+  --data-binary @examples/predict_request_synthetic.json
+```
+
+`POST /predict` accepts the original 120 application fields. Send missing values as JSON `null`; `TARGET`, `SK_ID_CURR`, missing fields, and extra fields are rejected. A successful response includes `default_probability`, `predicted_default`, and `threshold`.
+
+To use the preserved XGBoost model instead, start a second container on another local port:
+
+```bash
+docker run --rm -d --name home-credit-xgboost \
+  -e HOME_CREDIT_MODEL=xgboost \
+  -p 127.0.0.1:8001:8000 home-credit-risk-api:lightgbm
 curl http://127.0.0.1:8001/health
-curl -X POST http://127.0.0.1:8001/predict -H 'Content-Type: application/json' --data-binary @examples/predict_request.json
+curl -X POST http://127.0.0.1:8001/predict \
+  -H 'Content-Type: application/json' \
+  --data-binary @examples/predict_request_synthetic.json
 docker stop home-credit-xgboost
 ```
 
-Use `uv sync --locked` and `uv run pytest` to reproduce local verification.
-To reproduce the LightGBM artifact, obtain the authorized CSV as described above
-and run `uv run python train_lightgbm.py`. It selects the threshold by maximum
-F1 on the fixed validation split, then fits on train plus validation; it does
-not evaluate the held-out test set. The recorded LightGBM validation precision,
-recall and F1 are 0.2516, 0.4226 and 0.3154 respectively. These validation
-results must not be compared as if they were the XGBoost test results reported
-in Phase 3. They are educational measurements, not evidence for real lending
-or credit decisions.
-
-## Phase 4B: controlled feature engineering experiments
-
-The `exp/feature-engineering` branch contains the recorded validation and cross-validation experiments. See [`experiments/README.md`](experiments/README.md) for reproduction steps and [`experiments/REPORT.md`](experiments/REPORT.md) for results and limitations. The selected tuned LightGBM configuration is now integrated as the default model; the XGBoost baseline and its threshold remain available separately.
-
-### Model selection
-
-The default API model is the tuned LightGBM pipeline, which computes the approved
-features internally. Set `HOME_CREDIT_MODEL=xgboost` to serve the preserved
-XGBoost baseline and its own threshold. The LightGBM threshold is selected by
-maximum F1 on the fixed validation split; see `reports/lightgbm_validation.json`.
-Run `uv run python train_lightgbm.py` to reproduce the development-only fit.
-The held-out test set is not used by this script.
-
-## Interpreting this educational workflow
-
-The positive class represents repayment difficulty and accounts for about 8.07%
-of applications. False negatives miss applicants who experience difficulty;
-false positives flag applicants who would repay. Changing a threshold trades
-these errors against each other. ROC-AUC describes ranking across thresholds;
-Average Precision emphasizes positive-class retrieval under this imbalance.
-Neither establishes calibration or suitability for lending.
-
-This Kaggle Home Credit Default Risk dataset is a separate competition dataset
-from the course Module 6 CreditScoring dataset; their schemas, populations and
-metrics are not interchangeable. Obtain the official Kaggle training CSV after
-accepting its access rules and place it in `data/raw/application_train.csv`.
-The established seed-42 stratified split is 60/20/20. Candidate preprocessing is
-fit on training rows; fixed validation and training-only three-fold CV guide
-selection. The final LightGBM fit uses train plus validation. Its reported
-validation metrics and F1-optimized threshold are selection estimates and can
-be optimistic. They are not independent test results. The historical XGBoost
-test evaluation is reported separately; do not rerun it for further tuning.
-
-The notebook contains aggregate EDA, validation comparisons and diagnostic plots,
-not applicant records. Associations and feature importance are not causal claims.
-Removing gender alone is not a fairness audit: proxies, subgroup performance,
-calibration, consent and deployment impacts have not been adequately assessed.
-This project is educational only and must not determine real credit decisions.
-
-`examples/predict_request.json` demonstrates all-null missing-value handling.
-`examples/predict_request_synthetic.json` is a hand-authored hypothetical request
-with correctly typed numerical values; unspecified fields remain null. Neither
-request is copied from a real applicant. The test suite uses these committed
-examples and requires no Kaggle dataset.
-
-To reproduce the aggregate notebook outputs from a clean kernel, run from the
-repository root with the development dependencies installed:
+Stop the default LightGBM container when finished:
 
 ```bash
-uv run jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=900 notebook.ipynb
+docker stop home-credit-lightgbm
 ```
 
-This reruns historical training/validation candidate comparisons, not the final
-artifact training scripts. Approved artifacts are only read for descriptive
-importance summaries. Notebook Phase 4B tables explicitly load the recorded
-experiment JSON files; they are historical results, not newly rerun experiments.
+## Reproducing training and experiments
 
-The remediation notebook rerun produced XGBoost 2 validation ROC-AUC 0.755400,
-Average Precision 0.244557, and a diagnostic maximum-F1 threshold of 0.151809.
-These newly executed results differ from historical recorded measurements. They
-do not replace the frozen XGBoost production threshold (0.161378), the LightGBM
-threshold, either approved artifact, or the historical experiment JSON records.
+Install Python 3.11 and [`uv`](https://docs.astral.sh/uv/), download the authorized CSV as described in [Dataset](#dataset), then install the locked development dependencies:
 
-See the metric provenance review in `experiments/REPORT.md`: the notebook agrees
-with the saved no-engineering control at displayed precision. The older reference
-lacks enough provenance to identify its discrepancy conclusively.
+```bash
+uv sync --locked --group dev
+```
+
+Reproduce the development-only LightGBM validation selection and final train-plus-validation fit with:
+
+```bash
+uv run python train_lightgbm.py
+```
+
+This script selects a threshold on validation, fits the final pipeline on train plus validation, and does not evaluate the held-out test partition. It writes the model artifact and validation record at the paths listed in [Project structure](#project-structure).
+
+Run the notebook from the repository root:
+
+```bash
+uv run jupyter nbconvert --to notebook --execute --inplace \
+  --ExecutePreprocessor.timeout=900 notebook.ipynb
+```
+
+The notebook reproduces EDA and training/validation experiments; it does not calculate held-out test metrics. The experiments scripts can be run as described in [experiments/README.md](experiments/README.md). To check the dataset-independent test suite without training data:
+
+```bash
+uv run pytest -q
+```
+
+`train.py` preserves the historical XGBoost workflow and calculates its recorded final test evaluation. Do not rerun that test evaluation for model selection; the committed result is documented separately in [Results](#results) and `reports/test_metrics.json` is generated locally, not tracked.
+
+## ML Zoomcamp rubric alignment
+
+This table maps the [official project guidance and evaluation criteria](https://github.com/DataTalksClub/machine-learning-zoomcamp/blob/main/projects/README.md) to repository evidence. It describes what is present and does not assign a score or predict a review outcome.
+
+| Criterion | Project evidence |
+|---|---|
+| Problem description and run instructions | [Problem description](#problem-description), [Dataset](#dataset), [Quick start](#quick-start-docker), and [API usage](#api-usage) |
+| EDA and feature analysis | [`notebook.ipynb`](notebook.ipynb): target distribution, missingness, numerical distributions, and feature-importance analysis |
+| Multiple models and tuning | [`notebook.ipynb`](notebook.ipynb) and [`experiments/REPORT.md`](experiments/REPORT.md): Logistic Regression, Random Forest, XGBoost, LightGBM, feature experiments, and CV |
+| Training logic in scripts | [`train_lightgbm.py`](train_lightgbm.py); [`train.py`](train.py) preserves the XGBoost workflow |
+| Reproducibility and data access | [Dataset](#dataset), [`pyproject.toml`](pyproject.toml), [`uv.lock`](uv.lock), committed aggregate notebook outputs, and dataset-independent tests |
+| Model service | [`predict.py`](predict.py): FastAPI `/health` and `/predict` endpoints |
+| Dependencies and environment | [`pyproject.toml`](pyproject.toml), [`uv.lock`](uv.lock), and [Reproducing training and experiments](#reproducing-training-and-experiments) |
+| Containerization | [`Dockerfile`](Dockerfile) and [Docker instructions](#quick-start-docker) |
+| Cloud deployment | Not implemented. The service has been tested locally in Docker; no public cloud endpoint or deployment screenshot is claimed. |
+
+The Kaggle competition CSV is not committed because it is governed by Kaggle's access rules. The course's Module 6 CreditScoring dataset is separate and is not used here.
+
+## Limitations and responsible use
+
+- The validation-selected LightGBM threshold and reported validation metrics are selection estimates and may be optimistic. Three-fold CV provides additional development evidence, not an independent test result.
+- The historical XGBoost test result belongs to a separate fitted model and partition; it is not directly comparable to LightGBM validation or CV metrics. The XGBoost validation discrepancy is unresolved and disclosed above and in the experiment report.
+- Removing `CODE_GENDER` in a validation sensitivity check is not a fairness evaluation. Proxy variables, subgroup error rates, calibration, consent, and the effects of deployment have not been adequately assessed.
+- Model importance and feature associations do not imply causation. The project does not assess whether its probabilities are calibrated or appropriate for any lending decision.
+- This is an educational project only. Do not use it to approve, deny, price, or otherwise make decisions about real credit applications.
+
+## References
+
+- [DataTalks.Club Machine Learning Zoomcamp](https://github.com/DataTalksClub/machine-learning-zoomcamp)
+- [Official midterm project guidance and rubric](https://github.com/DataTalksClub/machine-learning-zoomcamp/blob/main/projects/README.md)
+- [Kaggle Home Credit Default Risk competition](https://www.kaggle.com/competitions/home-credit-default-risk)
+- [Experiment protocol and detailed results](experiments/REPORT.md)
