@@ -16,6 +16,7 @@ An educational project that predicts whether a loan applicant may have difficult
 - [Project structure](#project-structure)
 - [Quick start: Docker](#quick-start-docker)
 - [API usage](#api-usage)
+- [API Demo](#api-demo)
 - [Reproducing training and experiments](#reproducing-training-and-experiments)
 - [ML Zoomcamp rubric alignment](#ml-zoomcamp-rubric-alignment)
 - [Limitations and responsible use](#limitations-and-responsible-use)
@@ -134,6 +135,12 @@ Stop the default LightGBM container when finished:
 ```bash
 docker stop home-credit-lightgbm
 ```
+
+## API Demo
+
+The screenshot shows a local Docker demonstration: `GET /health`, `POST /predict` using synthetic request data, and the container reporting a healthy status. This is a local Docker demo, not a public cloud deployment.
+
+![Verified local Docker API demonstration](docs/images/api-demo.png)
 
 ## Reproducing training and experiments
 
