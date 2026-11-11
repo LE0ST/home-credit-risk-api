@@ -109,3 +109,57 @@ XGBoost baseline and its own threshold. The LightGBM threshold is selected by
 maximum F1 on the fixed validation split; see `reports/lightgbm_validation.json`.
 Run `uv run python train_lightgbm.py` to reproduce the development-only fit.
 The held-out test set is not used by this script.
+
+## Interpreting this educational workflow
+
+The positive class represents repayment difficulty and accounts for about 8.07%
+of applications. False negatives miss applicants who experience difficulty;
+false positives flag applicants who would repay. Changing a threshold trades
+these errors against each other. ROC-AUC describes ranking across thresholds;
+Average Precision emphasizes positive-class retrieval under this imbalance.
+Neither establishes calibration or suitability for lending.
+
+This Kaggle Home Credit Default Risk dataset is a separate competition dataset
+from the course Module 6 CreditScoring dataset; their schemas, populations and
+metrics are not interchangeable. Obtain the official Kaggle training CSV after
+accepting its access rules and place it in `data/raw/application_train.csv`.
+The established seed-42 stratified split is 60/20/20. Candidate preprocessing is
+fit on training rows; fixed validation and training-only three-fold CV guide
+selection. The final LightGBM fit uses train plus validation. Its reported
+validation metrics and F1-optimized threshold are selection estimates and can
+be optimistic. They are not independent test results. The historical XGBoost
+test evaluation is reported separately; do not rerun it for further tuning.
+
+The notebook contains aggregate EDA, validation comparisons and diagnostic plots,
+not applicant records. Associations and feature importance are not causal claims.
+Removing gender alone is not a fairness audit: proxies, subgroup performance,
+calibration, consent and deployment impacts have not been adequately assessed.
+This project is educational only and must not determine real credit decisions.
+
+`examples/predict_request.json` demonstrates all-null missing-value handling.
+`examples/predict_request_synthetic.json` is a hand-authored hypothetical request
+with correctly typed numerical values; unspecified fields remain null. Neither
+request is copied from a real applicant. The test suite uses these committed
+examples and requires no Kaggle dataset.
+
+To reproduce the aggregate notebook outputs from a clean kernel, run from the
+repository root with the development dependencies installed:
+
+```bash
+uv run jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=900 notebook.ipynb
+```
+
+This reruns historical training/validation candidate comparisons, not the final
+artifact training scripts. Approved artifacts are only read for descriptive
+importance summaries. Notebook Phase 4B tables explicitly load the recorded
+experiment JSON files; they are historical results, not newly rerun experiments.
+
+The remediation notebook rerun produced XGBoost 2 validation ROC-AUC 0.755400,
+Average Precision 0.244557, and a diagnostic maximum-F1 threshold of 0.151809.
+These newly executed results differ from historical recorded measurements. They
+do not replace the frozen XGBoost production threshold (0.161378), the LightGBM
+threshold, either approved artifact, or the historical experiment JSON records.
+
+See the metric provenance review in `experiments/REPORT.md`: the notebook agrees
+with the saved no-engineering control at displayed precision. The older reference
+lacks enough provenance to identify its discrepancy conclusively.

@@ -17,7 +17,8 @@ if MODEL_SELECTION not in MODEL_FILES:
     raise RuntimeError("HOME_CREDIT_MODEL must be lightgbm or xgboost")
 MODEL_PATH = Path(__file__).resolve().parent / "models" / MODEL_FILES[MODEL_SELECTION]
 if not MODEL_PATH.is_file():
-    raise RuntimeError("Model is not trained; run `uv run python train.py` first.")
+    script = "train_lightgbm.py" if MODEL_SELECTION == "lightgbm" else "train.py"
+    raise RuntimeError(f"Model is not trained; run `uv run python {script}` first.")
 BUNDLE = joblib.load(MODEL_PATH)
 FEATURE_COLUMNS: list[str] = BUNDLE["feature_columns"]
 FEATURE_TYPES: dict[str, str] = BUNDLE["feature_types"]

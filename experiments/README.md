@@ -1,8 +1,8 @@
 # Phase 4B: validation experiments
 
-These scripts and results are on `exp/feature-engineering`. They do not replace
-`models/xgb_home_credit.joblib`, `predict.py`, `Dockerfile`, or the production
-decision threshold.
+These historical scripts and results originate on `exp/feature-engineering`.
+The selected tuned LightGBM pipeline is now the default production API and Docker
+model. The original XGBoost artifact and its threshold remain available separately.
 
 ## Reproduce
 
@@ -49,3 +49,10 @@ its own limits. The preprocessing pipeline imputes remaining missing values.
 Validation metrics guide the experiment and are not an independent final
 evaluation. The `CODE_GENDER` variant is a predictive sensitivity check, not a
 fairness evaluation.
+
+## Production integration status
+
+Tuned LightGBM is now the default API model and is included in Docker with the
+stable `credit_features` transformer. XGBoost remains available through
+`HOME_CREDIT_MODEL=xgboost`. Historical experiment results are validation/CV
+selection evidence, not independent LightGBM test evaluation.

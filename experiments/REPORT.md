@@ -80,14 +80,14 @@ CV supports LightGBM on average, although its AP varies across folds. Each fold 
 trained on fewer rows than the model evaluated on the fixed validation split, so
 the absolute values are not directly comparable.
 
-## Candidate and limitations
+## Historical candidate recommendation and limitations
 
-Tuned **LightGBM with the engineered features** is the candidate proposed for a
+At the time of this experiment, tuned **LightGBM with the engineered features** was proposed for a
 further confirmation round: it leads ROC-AUC and AP on validation and also has the
 best CV means among the tested candidates. XGBoost with only `CREDIT_ANNUITY_RATIO`
 is another promising, simpler hypothesis, but it was measured only on the fixed
-split and needs CV before it should carry more weight. No production change or
-threshold change is proposed.
+split and needs CV before it should carry more weight. That experiment itself did not change production or its threshold; the subsequent
+approved integration made tuned LightGBM the default.
 
 Multiple ablations used the same validation split and may favor some combinations
 by chance. The test set was not evaluated, no new threshold was selected, and no
@@ -149,7 +149,54 @@ the unchanged `default_probability`, `predicted_default`, and `threshold` keys f
 the synthetic example request. Temporary candidate bundles were removed after the
 smoke check.
 
-The existing production Docker image still does not contain the `experiments`
-package or LightGBM runtime dependency. The experimental bundles are therefore
-not deployable in that image without a separate, approved production packaging
-change. No such change is part of this experiment.
+
+## Production integration status
+
+Tuned LightGBM is now the default API model and is included in Docker with the
+stable `credit_features` transformer. XGBoost remains available through
+`HOME_CREDIT_MODEL=xgboost`. Historical experiment results are validation/CV
+selection evidence, not independent LightGBM test evaluation.
+
+## Metric provenance review
+
+The historical Phase 2 training-only XGBoost validation reference is ROC-AUC
+0.755089 and AP 0.243390 (six decimals recorded). Its frozen production threshold
+is 0.161378. These are not validation measurements of the final artifact refitted
+on train plus validation. That artifact's historical test ROC-AUC/AP are
+0.7607282727652057 / 0.247628209742408; no test evaluation was rerun.
+
+The current notebook displays validation ROC-AUC/AP 0.7554 / 0.2446 in the
+comparison table and 0.755400 / 0.244557 in the sensitivity table. Its diagnostic
+maximum-F1 threshold is 0.151809 (six decimals printed). More precise notebook
+values were not saved. The earlier no-engineering control in
+`feature_ablation.json` records 0.7553995021235814 / 0.24455713089777548,
+which agrees at the notebook's displayed precision; these full-precision control
+values must not be attributed as exact saved notebook measurements.
+
+Inspection of baseline commit af6fce6 and current sources finds the same 180
+trees, depth 4, learning rate 0.06, min_child_weight 10, row/column sampling 0.8,
+reg_lambda 5, max_bin 128, hist method, two threads, seed 42 and binary logistic
+objective. Both use 120 original inputs (104 numeric, 16 categorical), median
+imputation with indicators and scaling, plus most-frequent categorical imputation
+and unknown-tolerant one-hot encoding fitted on training only. Two stratified
+seed-42 splits reserve 40%, then divide it equally; the index-based experimental
+split construction preserves the same ordering and stratification. Engineered
+feature and tuned-XGBoost candidates are different models, not baseline replicas.
+
+The XGBoost artifact and Phase 4B records report scikit-learn 1.9.1 and XGBoost
+3.2.0, matching the current environment (NumPy 2.4.6, pandas 3.1.1). The original
+validation run has no complete environment/data fingerprint, validation score
+vector or committed notebook outputs. Therefore its actual kernel execution
+cannot be reconstructed from the unchanged source alone. Stale state, unrecorded
+execution differences, environment/data drift and nondeterminism are possible,
+but none is demonstrated. The confirmed translation errors prevent execution;
+they do not explain the older numeric reference.
+
+Both documented threshold procedures maximize F1 on validation PR thresholds.
+The notebook rounds the displayed thresholds to six decimals; rounding cannot
+explain the approximately 0.009569 difference. Different fitted scores can change
+the optimum, but the missing historical score vector prevents a conclusive
+reconstruction. The discrepancy is documented, not causally resolved. Historical
+metrics, approved artifacts and thresholds are preserved. No additional fitting
+was performed for this review. Future experimental runs should record complete
+versions, data/split fingerprints and full-precision aggregate metrics.

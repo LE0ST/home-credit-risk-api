@@ -60,3 +60,28 @@ def test_missing_invalid_and_unknown_category():
     assert client.post('/predict', json=row).status_code == 422
     row = example(); row['AMT_CREDIT'] = None; row['NAME_CONTRACT_TYPE'] = 'unseen category'
     assert client.post('/predict', json=row).status_code == 200
+
+
+def test_published_schema_matches_both_models():
+    import joblib
+    schema = json.loads((ROOT / 'feature_schema.json').read_text())['features']
+    for name in ['lightgbm', 'xgb']:
+        bundle = joblib.load(ROOT / f'models/{name}_home_credit.joblib')
+        assert list(schema) == bundle['feature_columns']
+        assert schema == bundle['feature_types']
+
+
+@pytest.mark.parametrize('selection,script', [('lightgbm','train_lightgbm.py'), ('xgboost','train.py')])
+def test_missing_artifact_diagnostic(selection, script):
+    import os
+    code = "from unittest.mock import patch; import pathlib; p=patch.object(pathlib.Path,'is_file',return_value=False); p.start(); import predict"
+    result = subprocess.run([sys.executable,'-c',code],cwd=ROOT,env={**os.environ,'HOME_CREDIT_MODEL':selection},capture_output=True,text=True)
+    assert result.returncode != 0
+    assert f'python {script}' in result.stderr
+
+
+@pytest.mark.parametrize('selection', ['lightgbm','xgboost'])
+def test_synthetic_example_for_each_model(selection):
+    import os
+    code = "import json; from fastapi.testclient import TestClient; from predict import app,predict_record; p=json.load(open('examples/predict_request_synthetic.json')); r=TestClient(app).post('/predict',json=p); assert r.status_code==200; assert r.json()==predict_record(p)"
+    subprocess.run([sys.executable,'-c',code],cwd=ROOT,env={**os.environ,'HOME_CREDIT_MODEL':selection},check=True,capture_output=True)
